@@ -1,8 +1,9 @@
+import java.io.IOException;
 import java.util.Scanner;
 
 public class Main {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         Shell shell = new Shell(); // Create a new shell instance
         Scanner scanner = new Scanner(System.in);
         String input;
@@ -13,7 +14,7 @@ public class Main {
 
         // Main loop to read and process commands using the shell
         while (running) {
-            System.out.print(Shell.currentDirectory + ">");
+            shell.printPrompt(); // Print the prompt
             input = scanner.nextLine().trim(); // Get the user's input
 
             // Check if the user wants to exit the shell

@@ -1,29 +1,26 @@
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
 
 public class Shell {
     // Track current directory
-    public static File currentDirectory = new File("E:\\Coding things\\java-projects\\shell\\test");
+    private File currentDirectory = new File(System.getProperty("user.dir"));
 
     // Handle user commands
     public void handleCommand(String input) {
         // Split the input into commands, checking for pipes
         String[] commands = input.split("\\s*\\|\\s*");
-        List<String> commandList = new ArrayList<>();
-
-        for (String command : commands) {
-            commandList.add(command.trim());
-        }
 
         // Process the first command
-        processCommand(commandList.get(0));
+        processCommand(commands[0]);
 
         // Handle any piping
-        for (int i = 1; i < commandList.size(); i++) {
+        for (int i = 1; i < commands.length; i++) {
             // Pass the output of the previous command as input to the next command
-            processPipe(commandList.get(i - 1), commandList.get(i));
+            processPipe(commands[i - 1], commands[i]);
         }
+    }
+
+    public void printPrompt() {
+        System.out.print(currentDirectory + "> ");
     }
 
     private void processCommand(String commandInput) {
