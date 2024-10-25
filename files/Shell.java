@@ -1,11 +1,10 @@
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
 
 public class Shell {
     // Track current directory
-	public static File currentDirectory = new File("E:\\Coding things\\java-projects\\shell\\test");
+    public static File currentDirectory = new File("E:\\Coding things\\java-projects\\shell\\test");
 
     // Handle user commands
     public void handleCommand(String input) {
@@ -28,170 +27,170 @@ public class Shell {
     }
 
     private void processCommand(String commandInput) {
-    	 if (commandInput.contains(">")) {
-    	        // Handle '>>' for appending
-    	        if (commandInput.contains(">>")) {
-    	            String[] parts = commandInput.split(">>");
-    	            if (parts.length == 2) {
-    	                String command = parts[0].trim();  // The command to execute
-    	                String filePath = parts[1].trim().replace("\"", "");  // The file to append output to
-    	                redirectOutputToFile(command, filePath, true);  // Append mode
-    	            } else {
-    	                System.out.println("Invalid usage of >>");
-    	            }
-    	        }
-    	        // Handle '>' for overwriting
-    	        else {
-    	            String[] parts = commandInput.split(">");
-    	            if (parts.length == 2) {
-    	                String command = parts[0].trim();  // The command to execute
-    	                String filePath = parts[1].trim().replace("\"", "");  // The file to write output to
-    	                redirectOutputToFile(command, filePath, false);  // Overwrite mode
-    	            } else {
-    	                System.out.println("Invalid usage of >");
-    	            }
-    	        }
-    	    } else {
-    	
-    	    // Use regex to split by spaces while respecting quoted strings
-	        String[] tokens = commandInput.trim().split("\\s+(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
-	        String command = tokens[0];
-	
-	        try {
-	            switch (command) {
-		            case "echo":
-	                    if (tokens.length > 1) {
-	                        // Concatenate the rest of the tokens as the message to be echoed
-	                        String message = commandInput.substring(5); // Skip the 'echo' part
-	                        System.out.println(message);
-	                    } else {
-	                        System.out.println("Usage: echo <message>");
-	                    }
-	                    break;
-	                // Handle 'ls' command (only allow ls, ls -a, ls -r)
-	                case "ls":
-	                    if (tokens.length == 1) {
-	                        listFiles(false, false); // Regular 'ls'
-	                    } else if (tokens.length == 2 && tokens[1].equals("-a")) {
-	                        listFiles(true, false);  // 'ls -a'
-	                    } else if (tokens.length == 2 && tokens[1].equals("-r")) {
-	                        listFiles(false, true);  // 'ls -r'
-	                    } else {
-	                        System.out.println("Invalid usage. Supported ls commands: ls, ls -a, ls -r");
-	                    }
-	                    break;
-	
-	                // Handle 'mkdir' command
-	                case "mkdir":
-	                    if (tokens.length == 2) {
-	                        makeDirectory(tokens[1].replace("\"", "")); // Handle quoted directory names
-	                    } else {
-	                        System.out.println("Usage: mkdir <directory_name>");
-	                    }
-	                    break;
-	
-	                // Handle 'rmdir' command
-	                case "rmdir":
-	                    if (tokens.length == 2) {
-	                        removeDirectory(tokens[1].replace("\"", "")); // Handle quoted directory names
-	                    } else {
-	                        System.out.println("Usage: rmdir <directory_name>");
-	                    }
-	                    break;
-	
-	                // Handle 'rm' command
-	                case "rm":
-	                    if (tokens.length == 2) {
-	                        removeFile(tokens[1].replace("\"", "")); // Handle quoted file names
-	                    } else {
-	                        System.out.println("Usage: rm <file_name>");
-	                    }
-	                    break;
-	                // Handle 'cat' command
-	                case "cat":
-	                    if (tokens.length == 2) {
-	                        catFile(tokens[1].replace("\"", "")); // Handle quoted file names
-	                    } else {
-	                        System.out.println("Usage: cat <file_name>");
-	                    }
-	                    break;
-	
-	                // Handle 'touch' command
-	                case "touch":
-	                    if (tokens.length == 2) {
-	                        createFile(tokens[1].replace("\"", "")); // Handle quoted file names
-	                    } else {
-	                        System.out.println("Usage: touch <file_name>");
-	                    }
-	                    break;
-	
-	                // Handle 'mv' command
-	                case "mv":
-	                    if (tokens.length == 3) {
-	                        moveFileOrDirectory(tokens[1].replace("\"", ""), tokens[2].replace("\"", "")); // Handle quoted file names
-	                    } else {
-	                        System.out.println("Usage: mv <source> <destination>");
-	                    }
-	                    break;
-	
-	                // Handle 'cd' command (with drive change)
-	                case "cd":
-	                    if (tokens.length == 2) {
-	                        // Check if the input is a drive change (e.g., E:)
-	                        if (tokens[1].length() == 2 && Character.isLetter(tokens[1].charAt(0)) && tokens[1].charAt(1) == ':') {
-	                            // Change to the specified drive
-	                            File newDrive = new File(tokens[1] + "\\"); // For Windows paths
-	                            if (newDrive.exists() && newDrive.isDirectory()) {
-	                                currentDirectory = newDrive;
-	                                System.out.println("Changed to drive " + tokens[1]);
-	                            } else {
-	                                System.out.println("Drive not found: " + tokens[1]);
-	                            }
-	                        } else {
-	                            // Handle regular directory change, including folder names with spaces
-	                            changeDirectory(tokens[1].replace("\"", "")); // Remove quotes for directory name
-	                        }
-	                    } else {
-	                        System.out.println("Usage: cd <directory>");
-	                    }
-	                    break;
-	
-	                case "pwd":
-	                    if (tokens.length == 1) {
-	                        System.out.println(currentDirectory.getPath());
-	                    } else {
-	                        System.out.println("Usage: pwd");
-	                    }
-	                    break;
-	
-	                // Handle 'help' command
-	                case "help":
-	                    if (tokens.length == 1) {
-	                        showHelp();
-	                    } else {
-	                        System.out.println("Usage: help");
-	                    }
-	                    break;
-	
-	                // Handle 'exit' command
-	                case "exit":
-	                    if (tokens.length == 1) {
-	                        System.out.println("Exiting...");
-	                        System.exit(0); // Terminate the shell
-	                    } else {
-	                        System.out.println("Usage: exit");
-	                    }
-	                    break;
-	
-	                // Unrecognized command
-	                default:
-	                    System.out.println("Command not recognized: " + command);
-	                    break;
-	            }
-	        } catch (Exception e) {
-	            System.out.println("Error executing command: " + e.getMessage());
-	        }
-	    }
+        if (commandInput.contains(">")) {
+            // Handle '>>' for appending
+            if (commandInput.contains(">>")) {
+                String[] parts = commandInput.split(">>");
+                if (parts.length == 2) {
+                    String command = parts[0].trim();  // The command to execute
+                    String filePath = parts[1].trim().replace("\"", "");  // The file to append output to
+                    redirectOutputToFile(command, filePath, true);  // Append mode
+                } else {
+                    System.out.println("Invalid usage of >>");
+                }
+            }
+            // Handle '>' for overwriting
+            else {
+                String[] parts = commandInput.split(">");
+                if (parts.length == 2) {
+                    String command = parts[0].trim();  // The command to execute
+                    String filePath = parts[1].trim().replace("\"", "");  // The file to write output to
+                    redirectOutputToFile(command, filePath, false);  // Overwrite mode
+                } else {
+                    System.out.println("Invalid usage of >");
+                }
+            }
+        } else {
+
+            // Use regex to split by spaces while respecting quoted strings
+            String[] tokens = commandInput.trim().split("\\s+(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
+            String command = tokens[0];
+
+            try {
+                switch (command) {
+                    case "echo":
+                        if (tokens.length > 1) {
+                            // Concatenate the rest of the tokens as the message to be echoed
+                            String message = commandInput.substring(5); // Skip the 'echo' part
+                            System.out.println(message);
+                        } else {
+                            System.out.println("Usage: echo <message>");
+                        }
+                        break;
+                    // Handle 'ls' command (only allow ls, ls -a, ls -r)
+                    case "ls":
+                        if (tokens.length == 1) {
+                            listFiles(false, false); // Regular 'ls'
+                        } else if (tokens.length == 2 && tokens[1].equals("-a")) {
+                            listFiles(true, false);  // 'ls -a'
+                        } else if (tokens.length == 2 && tokens[1].equals("-r")) {
+                            listFiles(false, true);  // 'ls -r'
+                        } else {
+                            System.out.println("Invalid usage. Supported ls commands: ls, ls -a, ls -r");
+                        }
+                        break;
+
+                    // Handle 'mkdir' command
+                    case "mkdir":
+                        if (tokens.length == 2) {
+                            makeDirectory(tokens[1].replace("\"", "")); // Handle quoted directory names
+                        } else {
+                            System.out.println("Usage: mkdir <directory_name>");
+                        }
+                        break;
+
+                    // Handle 'rmdir' command
+                    case "rmdir":
+                        if (tokens.length == 2) {
+                            removeDirectory(tokens[1].replace("\"", "")); // Handle quoted directory names
+                        } else {
+                            System.out.println("Usage: rmdir <directory_name>");
+                        }
+                        break;
+
+                    // Handle 'rm' command
+                    case "rm":
+                        if (tokens.length == 2) {
+                            removeFile(tokens[1].replace("\"", "")); // Handle quoted file names
+                        } else {
+                            System.out.println("Usage: rm <file_name>");
+                        }
+                        break;
+                    // Handle 'cat' command
+                    case "cat":
+                        if (tokens.length == 2) {
+                            catFile(tokens[1].replace("\"", "")); // Handle quoted file names
+                        } else {
+                            System.out.println("Usage: cat <file_name>");
+                        }
+                        break;
+
+                    // Handle 'touch' command
+                    case "touch":
+                        if (tokens.length == 2) {
+                            createFile(tokens[1].replace("\"", "")); // Handle quoted file names
+                        } else {
+                            System.out.println("Usage: touch <file_name>");
+                        }
+                        break;
+
+                    // Handle 'mv' command
+                    case "mv":
+                        if (tokens.length == 3) {
+                            moveFileOrDirectory(tokens[1].replace("\"", ""), tokens[2].replace("\"", "")); // Handle quoted file names
+                        } else {
+                            System.out.println("Usage: mv <source> <destination>");
+                        }
+                        break;
+
+                    // Handle 'cd' command (with drive change)
+                    case "cd":
+                        if (tokens.length == 2) {
+                            // Check if the input is a drive change (e.g., E:)
+                            if (tokens[1].length() == 2 && Character.isLetter(tokens[1].charAt(0)) && tokens[1].charAt(1) == ':') {
+                                // Change to the specified drive
+                                File newDrive = new File(tokens[1] + "\\"); // For Windows paths
+                                if (newDrive.exists() && newDrive.isDirectory()) {
+                                    currentDirectory = newDrive;
+                                    System.out.println("Changed to drive " + tokens[1]);
+                                } else {
+                                    System.out.println("Drive not found: " + tokens[1]);
+                                }
+                            } else {
+                                // Handle regular directory change, including folder names with spaces
+                                changeDirectory(tokens[1].replace("\"", "")); // Remove quotes for directory name
+                            }
+                        } else {
+                            System.out.println("Usage: cd <directory>");
+                        }
+                        break;
+
+                    case "pwd":
+                        if (tokens.length == 1) {
+                            System.out.println(currentDirectory.getPath());
+                        } else {
+                            System.out.println("Usage: pwd");
+                        }
+                        break;
+
+                    // Handle 'help' command
+                    case "help":
+                        if (tokens.length == 1) {
+                            showHelp();
+                        } else {
+                            System.out.println("Usage: help");
+                        }
+                        break;
+
+                    // Handle 'exit' command
+                    case "exit":
+                        if (tokens.length == 1) {
+                            System.out.println("Exiting...");
+                            System.exit(0); // Terminate the shell
+                        } else {
+                            System.out.println("Usage: exit");
+                        }
+                        break;
+
+                    // Unrecognized command
+                    default:
+                        System.out.println("Command not recognized: " + command);
+                        break;
+                }
+            } catch (Exception e) {
+                System.out.println("Error executing command: " + e.getMessage());
+            }
+        }
     }
 
     // Handle piping manually
@@ -331,7 +330,7 @@ public class Shell {
     }
 
     // Move or rename a file or directory
- // Move or rename a file or directory
+    // Move or rename a file or directory
     private void moveFileOrDirectory(String source, String destination) {
         try {
             File src = new File(currentDirectory, source);
@@ -365,7 +364,7 @@ public class Shell {
     }
 
     // Change current working directory
- // Change current working directory
+    // Change current working directory
     private void changeDirectory(String dirName) {
         try {
             File dir = new File(dirName);
@@ -389,11 +388,11 @@ public class Shell {
             System.out.println("Error changing directory: " + e.getMessage());
         }
     }
-    
+
     private void redirectOutputToFile(String commandInput, String filePath, boolean append) {
         // Create the file relative to the current directory
         File outputFile = new File(currentDirectory, filePath);
-        
+
         try (FileWriter fileWriter = new FileWriter(outputFile, append);
              BufferedWriter writer = new BufferedWriter(fileWriter)) {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
