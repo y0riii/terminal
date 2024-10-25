@@ -1,9 +1,8 @@
-import java.io.IOException;
 import java.util.Scanner;
 
 public class Main {
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         Shell shell = new Shell(); // Create a new shell instance
         Scanner scanner = new Scanner(System.in);
         String input;
