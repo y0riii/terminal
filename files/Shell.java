@@ -8,6 +8,8 @@ public class Shell {
 
     // Handle user commands
     public void handleCommand(String input) {
+        outputBuilder.setLength(0);
+        outputStream = System.out;
         // Split the input into commands, checking for pipes
         String[] commands = input.split("\\s*\\|\\s*");
 
@@ -17,8 +19,9 @@ public class Shell {
         // Handle any piping
         for (int i = 1; i < commands.length; i++) {
             // Pass the output of the previous command as input to the next command
-            processPipe(commands[i - 1], commands[i]);
+            processPipe(commands[i]);
         }
+        printOutput();
     }
 
     public void printPrompt() {
@@ -26,26 +29,18 @@ public class Shell {
     }
 
     private void processCommand(String commandInput) {
-        outputBuilder.setLength(0);
-        outputStream = System.out;
-
         String[] tokens = commandInput.split("\\s+(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
         int length = tokens.length;
-        if (length >= 3 && (tokens[length - 2].equals(">") || tokens[length - 2].equals(">>"))) {
-            File file = new File(currentDirectory, tokens[length - 1]);
-            try {
-                outputStream = new FileOutputStream(file, tokens[length - 2].equals(">>"));
-                length -= 2;
-            } catch (Exception e) {
-                System.out.println("Error executing command: " + e.getMessage());
-                return;
-            }
-        }
-
-        // Use regex to split by spaces while respecting quoted strings
-        String command = tokens[0];
 
         try {
+            if (length >= 3 && (tokens[length - 2].equals(">") || tokens[length - 2].equals(">>"))) {
+                File file = new File(currentDirectory, tokens[length - 1]);
+                outputStream = new FileOutputStream(file, tokens[length - 2].equals(">>"));
+                length -= 2;
+            }
+
+            // Use regex to split by spaces while respecting quoted strings
+            String command = tokens[0];
             switch (command) {
                 case "echo":
                     if (length < 2) {
@@ -184,9 +179,7 @@ public class Shell {
                 // Unrecognized command
                 default:
                     System.out.println("Command not recognized: " + command);
-                    return;
             }
-            printOutput();
         } catch (Exception e) {
             System.out.println("Error executing command: " + e.getMessage());
         }
@@ -194,43 +187,42 @@ public class Shell {
     }
 
     // Handle piping manually
-    private void processPipe(String command1, String command2) {
+    private void processPipe(String command) {
         try {
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            PrintStream printStream = new PrintStream(outputStream);
+            if (outputStream != System.out) return;
+            String[] tokens = command.split("\\s+(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
+            int length = tokens.length;
+            if (length >= 3 && (tokens[length - 2].equals(">") || tokens[length - 2].equals(">>"))) {
+                File file = new File(currentDirectory, tokens[length - 1]);
+                outputStream = new FileOutputStream(file, tokens[length - 2].equals(">>"));
+                length -= 2;
+            }
+            switch (tokens[0]) {
+                case "grep":
+                    if (length != 2) {
+                        System.out.println("Usage: grep <pattern>");
+                        return;
+                    }
+                    grep(tokens[1].replace("\"", ""));
+                    break;
+                case "TODO LATER":
+                default:
+                    System.out.println("Command not recognized: " + command);
+            }
 
-            // Redirect output of the first command to the output stream
-            PrintStream originalOut = System.out;
-            System.setOut(printStream);
-
-            processCommand(command1); // Execute the first command
-
-            // Restore the original output
-            System.setOut(originalOut);
-
-            // Get the output of the first command
-            String output = outputStream.toString();
-            // Now process the second command with the output from the first command
-            simulateInputForNextCommand(command2, output);
         } catch (Exception e) {
             System.out.println("Error in piping commands: " + e.getMessage());
         }
     }
 
-    // Simulate input for the next command
-    private void simulateInputForNextCommand(String commandInput, String simulatedInput) {
-        try {
-            // Use a ByteArrayInputStream to simulate input
-            ByteArrayInputStream inputStream = new ByteArrayInputStream(simulatedInput.getBytes());
-            System.setIn(inputStream);
-
-            // Process the second command
-            processCommand(commandInput);
-
-            // Restore the original input stream
-            System.setIn(System.in);
-        } catch (Exception e) {
-            System.out.println("Error processing next command: " + e.getMessage());
+    private void grep(String pattern) {
+        String[] lines = outputBuilder.toString().split("\n");
+        outputBuilder.setLength(0);
+        for (String line : lines) {
+            if (line.contains(pattern)) {
+                outputBuilder.append(line);
+                outputBuilder.append('\n');
+            }
         }
     }
 
