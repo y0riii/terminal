@@ -3,7 +3,7 @@ import java.io.*;
 public class Shell {
     // Track current directory
     private File currentDirectory = new File(System.getProperty("user.dir"));
-    StringBuilder outputBuilder = new StringBuilder();
+    private StringBuilder outputBuilder = new StringBuilder();
     private OutputStream outputStream = System.out;
 
     // Handle user commands
@@ -25,7 +25,7 @@ public class Shell {
     }
 
     public void printPrompt() {
-        System.out.print(currentDirectory + "> ");
+        System.out.print(currentDirectory.getAbsolutePath() + "> ");
     }
 
     private void processCommand(String commandInput) {
@@ -207,7 +207,7 @@ public class Shell {
                     break;
                 case "TODO LATER":
                 default:
-                    System.out.println("Command not recognized: " + command);
+                    System.out.println("Command not recognized after pipe: " + command);
             }
 
         } catch (Exception e) {
