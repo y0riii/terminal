@@ -321,6 +321,7 @@ public class Shell {
                   touch <file_name>               Create a new file
                   mv <source> <destination>       Move or rename a file or directory
                   cd <directory>                  Change the current directory
+                  grep <pattern> <file_name>      Search for pattern in file
                   pwd                             Print the current directory
                   help                            Show this help message
                   exit                            Exit the shell
