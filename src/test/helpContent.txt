@@ -1,0 +1,14 @@
+Available commands:
+  echo <message>                  Echo the message to the console
+  ls [-a] [-r]                    List files in the current directory
+  mkdir <directory_name>          Create a new directory
+  rmdir <directory_name>          Remove an empty directory
+  rm <file_name>                  Remove a file
+  cat <file_name>                 Display file contents
+  touch <file_name>               Create a new file
+  mv <source> <destination>       Move or rename a file or directory
+  cd <directory>                  Change the current directory
+  grep <pattern> <file_name>      Search for pattern in file
+  pwd                             Print the current directory
+  help                            Show this help message
+  exit                            Exit the shell
