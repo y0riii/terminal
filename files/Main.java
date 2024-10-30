@@ -15,6 +15,11 @@ public class Main {
         while (running) {
             shell.printPrompt(); // Print the prompt
             input = scanner.nextLine().trim(); // Get the user's input
+            if (input.isEmpty()) continue;
+            if (input.startsWith("|")) {
+                System.out.println("Invalid syntax: " + input);
+                continue;
+            }
 
             // Check if the user wants to exit the shell
             if (input.equalsIgnoreCase("exit")) {

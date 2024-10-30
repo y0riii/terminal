@@ -1,17 +1,18 @@
 import java.io.*;
+import java.util.Arrays;
 
 public class Shell {
     // Track current directory
     private File currentDirectory = new File(System.getProperty("user.dir"));
-    private StringBuilder outputBuilder = new StringBuilder();
     private OutputStream outputStream = System.out;
+    private final StringBuilder outputBuilder = new StringBuilder();
 
     // Handle user commands
     public void handleCommand(String input) {
         outputBuilder.setLength(0);
         outputStream = System.out;
         // Split the input into commands, checking for pipes
-        String[] commands = input.split("\\s*\\|\\s*");
+        String[] commands = input.split("\\s*\\|\\s*", -1);
 
         // Process the first command
         processCommand(commands[0]);
@@ -25,155 +26,75 @@ public class Shell {
     }
 
     public void printPrompt() {
-        System.out.print(currentDirectory.getAbsolutePath() + "> ");
+        System.out.print(currentDirectory.getPath() + "> ");
+    }
+
+    String[] getArgs(String[] tokens) throws FileNotFoundException {
+        int length = tokens.length;
+        for (int i = 0; i < length; i++) {
+            tokens[i] = tokens[i].replace("\"", "");
+        }
+        if (length >= 3 && (tokens[length - 2].equals(">") || tokens[length - 2].equals(">>"))) {
+            File file = getFile(tokens[length - 1]);
+            outputStream = new FileOutputStream(file, tokens[length - 2].equals(">>"));
+            length -= 2;
+        }
+        return Arrays.copyOfRange(tokens, 1, length);
     }
 
     private void processCommand(String commandInput) {
-        String[] tokens = commandInput.split("\\s+(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
-        int length = tokens.length;
-
         try {
-            if (length >= 3 && (tokens[length - 2].equals(">") || tokens[length - 2].equals(">>"))) {
-                File file = new File(currentDirectory, tokens[length - 1]);
-                outputStream = new FileOutputStream(file, tokens[length - 2].equals(">>"));
-                length -= 2;
-            }
-
-            // Use regex to split by spaces while respecting quoted strings
+            String[] tokens = commandInput.split("\\s+(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
             String command = tokens[0];
+            String[] args = getArgs(tokens);
+
             switch (command) {
                 case "echo":
-                    if (length < 2) {
-                        System.out.println("Usage: echo <message>");
-                        return;
-                    }
-                    for (int i = 1; i < length; i++) {
-                        outputBuilder.append(tokens[i].replace("\"", ""));
-                        outputBuilder.append(' ');
-                    }
-                    outputBuilder.append('\n');
+                    executeEcho(args);
                     break;
-                // Handle 'ls' command (only allow ls, ls -a, ls -r)
+
                 case "ls":
-                    if (length == 1) {
-                        listFiles(false, false); // Regular 'ls'
-                    } else if (length == 2 && tokens[1].equals("-a")) {
-                        listFiles(true, false);  // 'ls -a'
-                    } else if (length == 2 && tokens[1].equals("-r")) {
-                        listFiles(false, true);  // 'ls -r'
-                    } else {
-                        System.out.println("Invalid usage. Supported ls commands: ls, ls -a, ls -r");
-                        return;
-                    }
+                    executeLs(args);
                     break;
 
-                // Handle 'mkdir' command
                 case "mkdir":
-                    if (length == 2) {
-                        makeDirectory(tokens[1].replace("\"", "")); // Handle quoted directory names
-                    } else {
-                        System.out.println("Usage: mkdir <directory_name>");
-                    }
-                    return;
-
-                // Handle 'rmdir' command
-                case "rmdir":
-                    if (length == 2) {
-                        removeDirectory(tokens[1].replace("\"", "")); // Handle quoted directory names
-                    } else {
-                        System.out.println("Usage: rmdir <directory_name>");
-                    }
-                    return;
-
-                // Handle 'rm' command
-                case "rm":
-                    if (length == 2) {
-                        removeFile(tokens[1].replace("\"", "")); // Handle quoted file names
-                    } else {
-                        System.out.println("Usage: rm <file_name>");
-                    }
-                    return;
-                // Handle 'cat' command
-                case "cat":
-                    if (length == 2) {
-                        catFile(tokens[1].replace("\"", "")); // Handle quoted file names
-                    } else {
-                        System.out.println("Usage: cat <file_name>");
-                        return;
-                    }
+                    executeMkdir(args);
                     break;
 
-                // Handle 'touch' command
+                case "rmdir":
+                    executeRmdir(args);
+                    break;
+
+                case "rm":
+                    executeRm(args);
+                    break;
+
+                case "cat":
+                    executeCat(args);
+                    break;
+
                 case "touch":
-                    if (length == 2) {
-                        createFile(tokens[1].replace("\"", "")); // Handle quoted file names
-                    } else {
-                        System.out.println("Usage: touch <file_name>");
-                    }
-                    return;
+                    executeTouch(args);
+                    break;
 
-                // Handle 'mv' command
                 case "mv":
-                    if (length == 3) {
-                        moveFileOrDirectory(tokens[1].replace("\"", ""), tokens[2].replace("\"", "")); // Handle quoted file names
-                    } else {
-                        System.out.println("Usage: mv <source> <destination>");
-                    }
-                    return;
+                    executeMv(args);
+                    break;
 
-                // Handle 'cd' command (with drive change)
                 case "cd":
-                    if (length != 2) {
-                        System.out.println("Usage: cd <directory>");
-                        return;
-                    }
-
-                    // Check if the input is a drive change (e.g., E:)
-                    if (tokens[1].length() == 2 && Character.isLetter(tokens[1].charAt(0)) && tokens[1].charAt(1) == ':') {
-                        // Change to the specified drive
-                        File newDrive = new File(tokens[1] + "\\"); // For Windows paths
-                        if (newDrive.exists() && newDrive.isDirectory()) {
-                            currentDirectory = newDrive;
-                            System.out.println("Changed to drive " + tokens[1]);
-                        } else {
-                            System.out.println("Drive not found: " + tokens[1]);
-                        }
-                        return;
-                    } else {
-                        // Handle regular directory change, including folder names with spaces
-                        changeDirectory(tokens[1].replace("\"", "")); // Remove quotes for directory name
-                    }
+                    executeCd(args);
                     break;
 
                 case "pwd":
-                    if (length == 1) {
-                        outputBuilder.append(currentDirectory.getPath());
-                        outputBuilder.append('\n');
-                    } else {
-                        System.out.println("Usage: pwd");
-                        return;
-                    }
+                    executePwd(args);
                     break;
 
-                // Handle 'help' command
+                case "grep":
+                    executeGrep(args, true);
+                    break;
+
                 case "help":
-                    if (length == 1) {
-                        showHelp();
-                    } else {
-                        System.out.println("Usage: help");
-                        return;
-                    }
-                    break;
-
-                // Handle 'exit' command
-                case "exit":
-                    if (length == 1) {
-                        System.out.println("Exiting...");
-                        System.exit(0); // Terminate the shell
-                    } else {
-                        System.out.println("Usage: exit");
-                        return;
-                    }
+                    executeHelp(args);
                     break;
 
                 // Unrecognized command
@@ -186,24 +107,237 @@ public class Shell {
 
     }
 
-    // Handle piping manually
-    private void processPipe(String command) {
-        try {
-            if (outputStream != System.out) return;
-            String[] tokens = command.split("\\s+(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
-            int length = tokens.length;
-            if (length >= 3 && (tokens[length - 2].equals(">") || tokens[length - 2].equals(">>"))) {
-                File file = new File(currentDirectory, tokens[length - 1]);
-                outputStream = new FileOutputStream(file, tokens[length - 2].equals(">>"));
-                length -= 2;
+    private void executeEcho(String[] args) {
+        if (args.length == 0) {
+            System.out.println("Usage: echo <message>");
+            return;
+        }
+        for (String arg : args) {
+            outputBuilder.append(arg);
+            outputBuilder.append(' ');
+        }
+        outputBuilder.append('\n');
+    }
+
+    private void executeLs(String[] args) {
+        if (args.length == 0) {
+            listFiles(false, false); // Regular 'ls'
+        } else if (args.length == 1 && args[0].equals("-a")) {
+            listFiles(true, false); // 'ls -a'
+        } else if (args.length == 1 && args[0].equals("-r")) {
+            listFiles(false, true); // 'ls -r'
+        } else {
+            System.out.println("Invalid usage. Supported ls commands: ls, ls -a, ls -r");
+        }
+    }
+
+    // Create a directory
+    private void executeMkdir(String[] args) {
+        if (args.length != 1) {
+            System.out.println("Usage: mkdir <directory_name>");
+            return;
+        }
+        File dir = getFile(args[0]);
+        if (dir.mkdir()) {
+            System.out.println("Directory created: " + args[0]);
+        } else {
+            System.out.println("Failed to create directory: " + args[0]);
+        }
+    }
+
+    private void executeRmdir(String[] args) {
+        if (args.length != 1) {
+            System.out.println("Usage: rmdir <directory_name>");
+            return;
+        }
+        File dir = getFile(args[0]);
+        if (dir.isDirectory() && dir.delete()) {
+            System.out.println("Directory removed: " + args[0]);
+        } else {
+            System.out.println("Failed to remove directory: " + args[0]);
+        }
+    }
+
+    // Remove a file
+    private void executeRm(String[] args) {
+        if (args.length != 1) {
+            System.out.println("Usage: rm <file_name>");
+            return;
+        }
+        File file = getFile(args[0]);
+        if (file.isFile() && file.delete()) {
+            System.out.println("File removed: " + args[0]);
+        } else {
+            System.out.println("Failed to remove file: " + args[0]);
+        }
+    }
+
+    // Display file contents
+    private void executeCat(String[] args) {
+        if (args.length != 1) {
+            System.out.println("Usage: cat <file_name>");
+            return;
+        }
+        File file = getFile(args[0]);
+        if (file.isFile()) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    outputBuilder.append(line);
+                    outputBuilder.append('\n');
+                }
+            } catch (IOException e) {
+                outputBuilder.append("Error reading file: ");
+                outputBuilder.append(e.getMessage());
+                outputBuilder.append('\n');
             }
-            switch (tokens[0]) {
+        } else {
+            outputBuilder.append("File not found: ");
+            outputBuilder.append(args[0]);
+            outputBuilder.append('\n');
+        }
+    }
+
+    // Create a file
+    private void executeTouch(String[] args) {
+        if (args.length != 1) {
+            System.out.println("Usage: touch <file_name>");
+            return;
+        }
+        File file = getFile(args[0]);
+        try {
+            if (file.createNewFile()) {
+                System.out.println("File created: " + args[0]);
+            } else {
+                System.out.println("File already exists: " + args[0]);
+            }
+        } catch (IOException e) {
+            System.out.println("Error creating file: " + e.getMessage());
+        }
+    }
+
+    // Move or rename a file or directory
+    private void executeMv(String[] args) {
+        if (args.length != 2) {
+            System.out.println("Usage: mv <source> <destination>");
+            return;
+        }
+        try {
+            File src = getFile(args[0]);
+            File dest = getFile(args[1]);
+
+            // Check if the destination is a directory
+            if (dest.isDirectory()) {
+                // Move the source file/directory inside the destination directory
+                File newDest = new File(dest, src.getName()); // Move the file into the destination directory
+                if (src.renameTo(newDest)) {
+                    System.out.println("Moved " + src.getPath() + " to " + newDest.getPath());
+                } else {
+                    System.out.println("Failed to move " + args[0] + " to " + dest.getPath());
+                }
+            } else {
+                // If destination is not a directory, rename the source file
+                if (src.renameTo(dest)) {
+                    System.out.println("Renamed " + src.getPath() + " to " + dest.getPath());
+                } else {
+                    System.out.println("Failed to rename " + args[0] + " to " + args[1]);
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Error moving/renaming: " + e.getMessage());
+        }
+    }
+
+    // Change current working directory
+    private void executeCd(String[] args) {
+        if (args.length != 1) {
+            System.out.println("Usage: cd <directory_name>");
+            return;
+        }
+        try {
+            File dir = getFile(args[0]);
+
+            // Resolve the canonical path (handles ".." and ".", removes redundant
+            // separators)
+            File resolvedDir = dir.getCanonicalFile();
+
+            // Check if the resolved path is a directory and exists
+            if (resolvedDir.isDirectory()) {
+                currentDirectory = resolvedDir;
+                System.out.println("Directory changed to: " + currentDirectory.getPath());
+            } else {
+                System.out.println("Directory not found: " + args[0]);
+            }
+        } catch (IOException e) {
+            System.out.println("Error changing directory: " + e.getMessage());
+        }
+    }
+
+    private void executePwd(String[] args) {
+        if (args.length != 0) {
+            System.out.println("Usage: pwd");
+            return;
+        }
+        outputBuilder.append(currentDirectory.getPath());
+        outputBuilder.append('\n');
+    }
+
+    private void executeGrep(String[] args, boolean useCat) {
+        if (args.length != 1 && !useCat) {
+            System.out.println("Usage: grep <pattern>");
+            return;
+        }
+        if (args.length != 2 && useCat) {
+            System.out.println("Usage: grep <pattern> <file_name>");
+            return;
+        }
+        if (useCat) {
+            executeCat(new String[]{args[1]});
+        }
+        String[] lines = outputBuilder.toString().split("\n");
+        outputBuilder.setLength(0);
+        for (String line : lines) {
+            if (line.contains(args[0])) {
+                outputBuilder.append(line);
+                outputBuilder.append('\n');
+            }
+        }
+    }
+
+    // Show help message
+    private void executeHelp(String[] args) {
+        if (args.length != 0) {
+            System.out.println("Usage: help");
+            return;
+        }
+        outputBuilder.append("""
+                Available commands:
+                  echo <message>                  Echo the message to the console
+                  ls [-a] [-r]                    List files in the current directory
+                  mkdir <directory_name>          Create a new directory
+                  rmdir <directory_name>          Remove an empty directory
+                  rm <file_name>                  Remove a file
+                  cat <file_name>                 Display file contents
+                  touch <file_name>               Create a new file
+                  mv <source> <destination>       Move or rename a file or directory
+                  cd <directory>                  Change the current directory
+                  pwd                             Print the current directory
+                  help                            Show this help message
+                  exit                            Exit the shell
+                """);
+    }
+
+    // Handle piping manually
+    private void processPipe(String commandInput) {
+        try {
+            if (outputStream != System.out)
+                return;
+            String[] tokens = commandInput.split("\\s+(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
+            String command = tokens[0];
+            String[] args = getArgs(tokens);
+            switch (command) {
                 case "grep":
-                    if (length != 2) {
-                        System.out.println("Usage: grep <pattern>");
-                        return;
-                    }
-                    grep(tokens[1].replace("\"", ""));
+                    executeGrep(args, false);
                     break;
                 case "TODO LATER":
                 default:
@@ -212,17 +346,6 @@ public class Shell {
 
         } catch (Exception e) {
             System.out.println("Error in piping commands: " + e.getMessage());
-        }
-    }
-
-    private void grep(String pattern) {
-        String[] lines = outputBuilder.toString().split("\n");
-        outputBuilder.setLength(0);
-        for (String line : lines) {
-            if (line.contains(pattern)) {
-                outputBuilder.append(line);
-                outputBuilder.append('\n');
-            }
         }
     }
 
@@ -264,158 +387,21 @@ public class Shell {
         }
     }
 
-    // Create a directory
-    private void makeDirectory(String dirName) {
-        File dir = new File(currentDirectory, dirName);
-        if (dir.mkdir()) {
-            System.out.println("Directory created: " + dirName);
-        } else {
-            System.out.println("Failed to create directory: " + dirName);
+    private File getFile(String path) {
+        File file = new File(path);
+        if (!file.isAbsolute()) {
+            file = new File(currentDirectory, path);
         }
-    }
-
-    // Remove a directory
-    private void removeDirectory(String dirName) {
-        File dir = new File(currentDirectory, dirName);
-        if (dir.isDirectory() && dir.delete()) {
-            System.out.println("Directory removed: " + dirName);
-        } else {
-            System.out.println("Failed to remove directory: " + dirName);
-        }
-    }
-
-    // Remove a file
-    private void removeFile(String fileName) {
-        File file = new File(currentDirectory, fileName);
-        if (file.isFile() && file.delete()) {
-            System.out.println("File removed: " + fileName);
-        } else {
-            System.out.println("Failed to remove file: " + fileName);
-        }
-    }
-
-    // Display file contents
-    private void catFile(String fileName) {
-        File file = new File(currentDirectory, fileName);
-        if (file.isFile()) {
-            try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    outputBuilder.append(line);
-                    outputBuilder.append('\n');
-                }
-            } catch (IOException e) {
-                outputBuilder.append("Error reading file: ");
-                outputBuilder.append(e.getMessage());
-                outputBuilder.append('\n');
-            }
-        } else {
-            outputBuilder.append("File not found: ");
-            outputBuilder.append(fileName);
-            outputBuilder.append('\n');
-        }
-    }
-
-    // Create a file
-    private void createFile(String fileName) {
-        File file = new File(currentDirectory, fileName);
-        try {
-            if (file.createNewFile()) {
-                System.out.println("File created: " + fileName);
-            } else {
-                System.out.println("File already exists: " + fileName);
-            }
-        } catch (IOException e) {
-            System.out.println("Error creating file: " + e.getMessage());
-        }
-    }
-
-    // Move or rename a file or directory
-    // Move or rename a file or directory
-    private void moveFileOrDirectory(String source, String destination) {
-        try {
-            File src = new File(currentDirectory, source);
-            File dest = new File(destination);
-
-            // If the destination is not absolute, treat it as relative to the current directory
-            if (!dest.isAbsolute()) {
-                dest = new File(currentDirectory, destination);
-            }
-
-            // Check if the destination is a directory
-            if (dest.isDirectory()) {
-                // Move the source file/directory inside the destination directory
-                File newDest = new File(dest, src.getName()); // Move the file into the destination directory
-                if (src.renameTo(newDest)) {
-                    System.out.println("Moved " + src.getPath() + " to " + newDest.getPath());
-                } else {
-                    System.out.println("Failed to move " + source + " to " + dest.getPath());
-                }
-            } else {
-                // If destination is not a directory, rename the source file
-                if (src.renameTo(dest)) {
-                    System.out.println("Renamed " + src.getPath() + " to " + dest.getPath());
-                } else {
-                    System.out.println("Failed to rename " + source + " to " + destination);
-                }
-            }
-        } catch (Exception e) {
-            System.out.println("Error moving/renaming: " + e.getMessage());
-        }
-    }
-
-    // Change current working directory
-    // Change current working directory
-    private void changeDirectory(String dirName) {
-        try {
-            File dir = new File(dirName);
-
-            // If the path is not absolute, append it to the current directory
-            if (!dir.isAbsolute()) {
-                dir = new File(currentDirectory, dirName);
-            }
-
-            // Resolve the canonical path (handles ".." and ".", removes redundant separators)
-            File resolvedDir = dir.getCanonicalFile();
-
-            // Check if the resolved path is a directory and exists
-            if (resolvedDir.isDirectory()) {
-                currentDirectory = resolvedDir;
-                System.out.println("Directory changed to: " + currentDirectory.getPath());
-            } else {
-                System.out.println("Directory not found: " + dirName);
-            }
-        } catch (IOException e) {
-            System.out.println("Error changing directory: " + e.getMessage());
-        }
-    }
-
-    // Show help message
-    private void showHelp() {
-        outputBuilder.append("""
-                Available commands:
-                  echo <message>                  Echo the message to the console
-                  ls [-a] [-r]                    List files in the current directory
-                  mkdir <directory_name>          Create a new directory
-                  rmdir <directory_name>          Remove an empty directory
-                  rm <file_name>                  Remove a file
-                  cat <file_name>                 Display file contents
-                  touch <file_name>               Create a new file
-                  mv <source> <destination>       Move or rename a file or directory
-                  cd <directory>                  Change the current directory
-                  pwd                             Print the current directory
-                  help                            Show this help message
-                  exit                            Exit the shell
-                """);
+        return file;
     }
 
     private void printOutput() {
         if (outputStream == System.out) {
-            System.out.print(outputBuilder.toString());
+            System.out.print(outputBuilder);
             return;
         }
         try (PrintStream printStream = new PrintStream(outputStream)) {
-            printStream.print(outputBuilder.toString());
+            printStream.print(outputBuilder);
         } catch (Exception e) {
             System.out.println("Error executing command: " + e.getMessage());
         }
