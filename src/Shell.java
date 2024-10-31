@@ -228,13 +228,15 @@ public class Shell {
                 // Move the source file/directory inside the destination directory
                 File newDest = new File(dest, src.getName()); // Move the file into the destination directory
                 if (src.renameTo(newDest)) {
-                    System.out.println("Moved " + src.getPath() + " to " + newDest.getPath());
+                    System.out.println("Moved " + src.getName() + " to " + newDest.getPath());
                 } else {
                     System.out.println("Failed to move " + args[0] + " to " + dest.getPath());
                 }
             } else {
                 if (dest.exists()) {
-                    dest.delete(); // Overwrite if it already exists
+                    if (!dest.delete()) { // Overwrite if it already exists
+                        throw new Exception("unable to delete the original destination file");
+                    }
                 }
                 // If destination is not a directory, rename the source file
                 if (src.renameTo(dest)) {

@@ -118,6 +118,17 @@ public class TestShell {
 
     @Test
     public void TestMv() {
+        shell.handleCommand("touch myTest.txt");
+        shell.handleCommand("mv myTest.txt src/test");
+
+        File testOriginal = new File("myTest.txt");
+        File testMv = new File("src/test/myTest.txt");
+        Assertions.assertTrue(!testOriginal.exists() && testMv.exists());
+        testMv.delete();
+    }
+
+    @Test
+    public void TestMvRename() {
         shell.handleCommand("cd src/test");
         shell.handleCommand("touch myTest.txt");
         shell.handleCommand("mv myTest.txt myMvTest.txt");
