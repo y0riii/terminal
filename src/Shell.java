@@ -342,7 +342,7 @@ public class Shell {
 
     private void executeWho(String[] args) {
         if (args.length != 0) {
-            System.out.println("Usage: who");
+            System.out.println("Usage: who | users");
             return;
         }
         outputBuilder.append(System.getProperty("user.name"));
