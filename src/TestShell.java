@@ -54,13 +54,18 @@ public class TestShell {
 
     @Test
     public void testLs() {
+        shell.handleCommand("ls src/test");
+
+        String output = outContent.toString().trim();
+        Assertions.assertEquals("helpContent.txt\ntest.txt", output);
+
         shell.handleCommand("cd src/test");
 
         outContent.reset();
 
         shell.handleCommand("ls");
 
-        String output = outContent.toString().trim();
+        output = outContent.toString().trim();
         Assertions.assertEquals("helpContent.txt\ntest.txt", output);
     }
 

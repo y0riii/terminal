@@ -92,6 +92,15 @@ public class Shell {
                 case "grep":
                     executeGrep(args, true);
                     break;
+                
+                case "uname":
+                    executeUname(args);
+                    break;
+                
+                case "users":
+                case "who":
+                    executeWho(args);
+                    break;
 
                 case "help":
                     executeHelp(args);
@@ -121,15 +130,29 @@ public class Shell {
     }
 
     private void executeLs(String[] args) {
-        if (args.length == 0) {
-            listFiles(false, false); // Regular 'ls'
-        } else if (args.length == 1 && args[0].equals("-a")) {
-            listFiles(true, false); // 'ls -a'
-        } else if (args.length == 1 && args[0].equals("-r")) {
-            listFiles(false, true); // 'ls -r'
-        } else {
-            System.out.println("Invalid usage. Supported ls commands: ls, ls -a, ls -r");
+        boolean showHidden = false;
+        boolean recursive = false;
+        File dir = currentDirectory;
+        for (String arg : args) {
+            if (arg.startsWith("-")) {
+                if (!arg.matches("-[ar]+")) {
+                    System.out.println("Invalid option: " + arg);
+                    return;
+                }
+                showHidden = arg.contains("a");
+                recursive = arg.contains("r");
+            } else if (dir == currentDirectory) {
+                dir = getFile(arg);
+                if (!dir.exists() || !dir.isDirectory()) {
+                    System.out.println("Directory not found: " + arg);
+                    return;
+                }
+            } else {
+                System.out.println("Invalid argument: " + arg);
+                return;
+            }
         }
+        listFiles(dir, showHidden, recursive);
     }
 
     // Create a directory
@@ -287,10 +310,12 @@ public class Shell {
     private void executeGrep(String[] args, boolean useCat) {
         if (args.length != 1 && !useCat) {
             System.out.println("Usage: grep <pattern>");
+            outputBuilder.setLength(0);
             return;
         }
         if (args.length != 2 && useCat) {
             System.out.println("Usage: grep <pattern> <file_name>");
+            outputBuilder.setLength(0);
             return;
         }
         if (useCat) {
@@ -304,6 +329,24 @@ public class Shell {
                 outputBuilder.append('\n');
             }
         }
+    }
+
+    private void executeUname(String[] args) {
+        if (args.length != 0) {
+            System.out.println("Usage: uname");
+            return;
+        }
+        outputBuilder.append(System.getProperty("os.name"));
+        outputBuilder.append('\n');
+    }
+
+    private void executeWho(String[] args) {
+        if (args.length != 0) {
+            System.out.println("Usage: who");
+            return;
+        }
+        outputBuilder.append(System.getProperty("user.name"));
+        outputBuilder.append('\n');
     }
 
     // Show help message
@@ -325,6 +368,9 @@ public class Shell {
                   cd <directory>                  Change the current directory
                   grep <pattern> <file_name>      Search for pattern in file
                   pwd                             Print the current directory
+                  uname                           Displays the operating system name
+                  users                           Displays the names of users currently logged in to the system
+                  who                             Displays the names of users currently logged in to the system
                   help                            Show this help message
                   exit                            Exit the shell
                 """);
@@ -353,8 +399,8 @@ public class Shell {
     }
 
     // List files in the current directory
-    private void listFiles(boolean showHidden, boolean recursive) {
-        File[] files = currentDirectory.listFiles();
+    private void listFiles(File dir, boolean showHidden, boolean recursive) {
+        File[] files = dir.listFiles();
         if (files != null) {
             for (File file : files) {
                 if (!showHidden && file.isHidden()) {
