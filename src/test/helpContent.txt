@@ -10,5 +10,8 @@ Available commands:
   cd <directory>                  Change the current directory
   grep <pattern> <file_name>      Search for pattern in file
   pwd                             Print the current directory
+  uname                           Displays the operating system name
+  users                           Displays the names of users currently logged in to the system
+  who                             Displays the names of users currently logged in to the system
   help                            Show this help message
   exit                            Exit the shell
